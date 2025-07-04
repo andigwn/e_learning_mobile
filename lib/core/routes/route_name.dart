@@ -5,4 +5,6 @@ abstract class Routes {
   static const login = "login";
   static const splash = "splas";
   static const jadwal = "jadwal";
+  static const absensi = "absensi";
+  static const tugas = "tugas";
 }

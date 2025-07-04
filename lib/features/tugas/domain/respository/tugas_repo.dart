@@ -2,18 +2,17 @@ import 'package:dio/dio.dart';
 import 'package:e_learning_mobile/core/api/api_client.dart';
 import 'package:e_learning_mobile/core/constant/api_constant.dart';
 import 'package:e_learning_mobile/core/storage/secure_storage.dart';
-import 'package:e_learning_mobile/features/jadwal/data/model/jadwal_model.dart';
+import 'package:e_learning_mobile/features/tugas/data/model/tugas_model.dart';
 
-class JadwalRepo {
-  Future<List<Jadwal>> getJadwal(int rombelId) async {
+class TugasRepo {
+  Future<List<Tugas>> getTugas(int jadwalId) async {
     try {
-      // Pastikan token tersedia
       final token = await SecureStorage.getToken();
       if (token == null) {
         throw Exception('Anda harus login terlebih dahulu');
       }
       final response = await ApiClient.dio.get(
-        ApiConstants.jadwalEndpoint(rombelId),
+        ApiConstants.tugasEndpoint(jadwalId),
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
       final data = response.data['data'];
@@ -21,18 +20,13 @@ class JadwalRepo {
         // Return list kosong agar UI tetap jalan, tidak lempar error
         return [];
       }
-      print(data);
-      return data
-          .where(
-            (jadwalJson) =>
-                jadwalJson != null && jadwalJson is Map<String, dynamic>,
-          )
-          .map<Jadwal>((jadwalJson) => Jadwal.fromJson(jadwalJson))
-          .toList();
+      return data.map((e) => Tugas.fromJson(e)).toList();
     } on DioException catch (e) {
-      throw Exception(
-        e.response?.data['message']?.toString() ?? 'Gagal memuat daftar siswa',
-      );
+      // Tangani error dari DioException
+      if (e.response?.data != null && e.response!.data['message'] != null) {
+        throw Exception(e.response!.data['message'].toString());
+      }
+      throw Exception('Gagal memuat daftar tugas: ${e.message}');
     }
   }
 }

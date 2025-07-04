@@ -17,7 +17,7 @@ class BuildStudentInfoCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              student.name!,
+              student.name ?? '-',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -34,7 +34,7 @@ class BuildStudentInfoCard extends StatelessWidget {
                 Text('Jurusan', style: TextStyle(color: Colors.white)),
                 SizedBox(width: 8),
                 Text(
-                  student.major!,
+                  student.major ?? '-',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
@@ -50,7 +50,7 @@ class BuildStudentInfoCard extends StatelessWidget {
                 Text('Kelas', style: TextStyle(color: Colors.white)),
                 SizedBox(width: 8),
                 Text(
-                  student.classroom!,
+                  student.rombelName!,
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     color: Colors.white,

@@ -2,75 +2,59 @@ class Jadwal {
   final int? id;
   final String? mapel;
   final String? guru;
-  final String? siswa;
-  final String? kelas;
-  final String? ruangan;
+  final String? rombel;
   final String? hari;
-  final String? tipe;
   final String? jamMulai;
   final String? jamSelesai;
   final String? semester;
   final String? tahunAjaran;
-  final String? status;
 
   Jadwal({
     this.id,
     this.mapel,
     this.guru,
-    this.siswa,
-    this.kelas,
-    this.ruangan,
+    this.rombel,
     this.hari,
-    this.tipe,
     this.jamMulai,
     this.jamSelesai,
     this.semester,
     this.tahunAjaran,
-    this.status,
   });
 
   factory Jadwal.fromJson(Map<String, dynamic> json) {
-    String? getNestedString(
-      dynamic parent,
-      String key, [
-      String? defaultValue,
-    ]) {
-      if (parent is Map<String, dynamic> && parent[key] != null) {
-        return parent[key].toString();
-      }
-      return defaultValue;
-    }
-
     return Jadwal(
       id: json['id_jadwal'],
-      mapel: getNestedString(
-        json['mapel'],
-        'nama_mapel',
-        'Tidak Ada Mata Pelajaran',
-      ),
-      guru: getNestedString(json['guru'], 'nama', 'Tidak Ada Nama Guru'),
-      siswa: getNestedString(
-        json['siswa'],
-        'nama_siswa',
-        'Tidak Ada Nama Siswa',
-      ),
-      kelas: getNestedString(
-        json['kelas'],
-        'nama_kelas',
-        'Tidak Ada Nama Kelas',
-      ),
-      ruangan: getNestedString(
-        json['ruangan'],
-        'nama_ruangan',
-        'Tidak Ada Nama Ruangan',
-      ),
+      mapel:
+          (json['mapel'] != null && json['mapel'] is Map<String, dynamic>)
+              ? (json['mapel']?['nama_mapel'])
+              : 'Tidak Ada Mata Pelajaran',
+      guru:
+          (json['guru'] != null && json['guru'] is Map<String, dynamic>)
+              ? (json['guru']?['nama'])
+              : 'Tidak Ada Guru',
+      rombel:
+          (json['rombel'] != null && json['rombel'] is Map<String, dynamic>)
+              ? (json['rombel']?['nama_rombel'])
+              : 'Tidak Rombel',
       hari: json['hari']?.toString() ?? 'Tidak Ada Hari',
-      tipe: json['tipe']?.toString() ?? 'Tidak Ada Tipe',
       jamMulai: json['jam_mulai']?.toString() ?? 'Tidak Diketahui',
       jamSelesai: json['jam_selesai']?.toString() ?? 'Tidak Diketahui',
       semester: json['semester']?.toString() ?? 'Tidak Ada Semester',
       tahunAjaran: json['tahun_ajaran']?.toString() ?? 'Tidak Ada Tahun Ajaran',
-      status: json['status']?.toString() ?? 'Tidak Ada Status',
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id_jadwal': id,
+      'mapel': {'nama_mapel': mapel},
+      'guru': {'nama': guru},
+      'rombel': {'nama_rombel': rombel},
+      'hari': hari,
+      'jam_mulai': jamMulai,
+      'jam_selesai': jamSelesai,
+      'semester': semester,
+      'tahun_ajaran': tahunAjaran,
+    };
   }
 }

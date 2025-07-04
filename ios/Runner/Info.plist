@@ -47,5 +47,17 @@
 		<true/>
 		<key>UIStatusBarHidden</key>
 		<false/>
+		<key>NSLocationWhenInUseUsageDescription</key>
+		<string>Aplikasi membutuhkan akses lokasi saat digunakan.</string>
+		<key>NSLocationAlwaysUsageDescription</key>
+		<string>Aplikasi membutuhkan akses lokasi di background.</string>
+		<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+		<string>Aplikasi membutuhkan akses lokasi untuk fitur absensi dan tracking.</string>
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>App membutuhkan akses ke galeri untuk menyimpan file tugas.</string>
+		<key>NSDocumentsFolderUsageDescription</key>
+		<string>App membutuhkan akses ke dokumen untuk menyimpan file tugas.</string>
+		<key>NSDownloadsFolderUsageDescription</key>
+		<string>App membutuhkan akses ke folder Download untuk menyimpan file tugas.</string>
 	</dict>
 </plist>

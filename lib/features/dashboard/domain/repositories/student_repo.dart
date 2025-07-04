@@ -17,12 +17,11 @@ class StudentRepository {
         ApiConstants.siswaEndpoint,
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
-
       if (response.data['data'] == null || response.data['data'].isEmpty) {
         throw Exception('Data siswa tidak ditemukan');
       }
-
-      return Student.fromJson(response.data['data'][0]);
+      print(response.data['data']);
+      return Student.fromJson(response.data['data']);
     } on DioException catch (e) {
       throw Exception(
         e.response?.data['message']?.toString() ??
@@ -39,10 +38,9 @@ class StudentRepository {
       }
 
       final response = await ApiClient.dio.get(
-        '${ApiConstants.siswaEndpoint}/all',
+        'siswa',
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
-
       return (response.data['data'] as List)
           .map((studentJson) => Student.fromJson(studentJson))
           .toList();

@@ -65,7 +65,7 @@ class StudentDashboardPage extends StatelessWidget {
           // Tampilkan data siswa
           Text('Nama: ${student.name}'),
           Text('NIS: ${student.nis}'),
-          Text('Kelas: ${student.classroom}'),
+          // Text('Kelas: ${student.classroom}'),
           // ... widget lainnya
         ],
       ),

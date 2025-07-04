@@ -16,7 +16,7 @@ class JadwalBloc extends Bloc<JadwalEvent, JadwalState> {
   ) async {
     emit(JadwalLoading());
     try {
-      final jadwal = await repository.getJadwal();
+      final jadwal = await repository.getJadwal(event.rombelId);
       emit(JadwalLoaded(jadwal));
     } catch (e) {
       emit(JadwalError(e.toString()));

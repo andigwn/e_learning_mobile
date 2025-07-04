@@ -7,9 +7,9 @@ class Student {
   final String? birthPlace;
   final String? birthDate;
   final String? address;
-  final String? phone;
   final String? imageUrl;
-  final String? classroom; // Diambil dari ruangan.nama_ruangan (rombel)
+  final int? rombelId; // Diambil dari ruangan.nama_ruangan (rombel)
+  final String? rombelName; // Diambil dari ruangan.nama_ruangan (rombel)
 
   Student({
     this.id,
@@ -20,24 +20,58 @@ class Student {
     this.birthPlace,
     this.birthDate,
     this.address,
-    this.phone,
     this.imageUrl,
-    this.classroom,
+    this.rombelId,
+    this.rombelName,
   });
 
   factory Student.fromJson(Map<String, dynamic> json) {
+    // Cari id siswa dari beberapa kemungkinan key
+    dynamic idRaw = json['id_siswa'] ?? json['id'] ?? json['id_users'];
+    int? id;
+    if (idRaw is String) {
+      id = int.tryParse(idRaw);
+    } else if (idRaw is int) {
+      id = idRaw;
+    }
+    // Cari NIS
+    String? nis = json['nis']?.toString() ?? json['nisn']?.toString();
+    // Gender
+    String? gender;
+    if (json['jenis_kelamin'] != null) {
+      final jk = json['jenis_kelamin'].toString().toLowerCase();
+      if (jk == 'pria' || jk == 'laki-laki' || jk == 'laki') {
+        gender = 'Laki-laki';
+      } else if (jk == 'perempuan' || jk == 'wanita') {
+        gender = 'Perempuan';
+      } else {
+        gender = json['jenis_kelamin'].toString();
+      }
+    }
+    // Rombel id
+    dynamic rombelIdRaw = json['rombel']?['id_rombel'] ?? json['id_rombel'];
+    int? rombelId;
+    if (rombelIdRaw is String) {
+      rombelId = int.tryParse(rombelIdRaw);
+    } else if (rombelIdRaw is int) {
+      rombelId = rombelIdRaw;
+    }
     return Student(
-      id: json['id_siswa'],
-      name: json['nama_siswa'],
-      nis: json['nis'].toString(),
-      major: json['jurusan']?['nama_jurusan'] ?? 'Tidak ada jurusan',
-      gender: json['jenis_kelamin'] == 'PRIA' ? 'Laki-laki' : 'Perempuan',
-      birthPlace: json['tempat'] ?? 'Tidak diketahui',
-      birthDate: json['tanggal_lahir'] ?? 'Tidak diketahui',
+      id: id,
+      name: json['nama_siswa'] ?? json['name'],
+      nis: nis,
+      major:
+          json['jurusan']?['nama_jurusan'] ??
+          json['major'] ??
+          'Tidak ada jurusan',
+      gender: gender,
+      birthPlace: json['tempat'] ?? json['birthPlace'] ?? 'Tidak diketahui',
+      birthDate:
+          json['tanggal_lahir'] ?? json['birthDate'] ?? 'Tidak diketahui',
       address: _buildFullAddress(json),
-      phone: json['no_hp'] ?? 'Tidak ada nomor HP',
-      imageUrl: json['image'] ?? 'default_profile.jpg',
-      classroom: json['ruangan']?['kode_kelas'] ?? 'Kelas belum ditentukan',
+      imageUrl: json['image'] ?? json['imageUrl'] ?? 'default_profile.jpg',
+      rombelId: rombelId,
+      rombelName: json['rombel']?['nama_rombel'] ?? json['rombelName'],
     );
   }
 
@@ -56,5 +90,22 @@ class Student {
       kelurahan,
       kecamatan,
     ].where((part) => part.isNotEmpty).join(', ');
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id_siswa': id,
+      'nama_siswa': name,
+      'nis': nis,
+      'jurusan': {'nama_jurusan': major},
+      'jenis_kelamin': gender,
+      'tempat': birthPlace,
+      'tanggal_lahir': birthDate,
+      'alamat': address,
+      'image': imageUrl,
+      'rombel': {'id_rombel': rombelId, 'nama_rombel': rombelName},
+      'id_rombel': rombelId,
+      'rombelName': rombelName,
+    };
   }
 }

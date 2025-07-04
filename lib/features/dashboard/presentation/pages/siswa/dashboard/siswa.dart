@@ -1,3 +1,4 @@
+import 'package:e_learning_mobile/core/routes/app_route.dart';
 import 'package:e_learning_mobile/features/dashboard/bloc/dash_bloc.dart';
 import 'package:e_learning_mobile/features/dashboard/domain/repositories/student_repo.dart';
 import 'package:e_learning_mobile/features/dashboard/presentation/widgets/dashboard/build_header_logo.dart';
@@ -8,6 +9,7 @@ import 'package:e_learning_mobile/features/jadwal/bloc/jadwal_bloc.dart';
 import 'package:e_learning_mobile/features/jadwal/domain/repositories/jadwal_repo.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 class SiswaPage extends StatelessWidget {
@@ -24,9 +26,7 @@ class SiswaPage extends StatelessWidget {
                     ..add(LoadStudentProfile()),
         ),
         BlocProvider(
-          create:
-              (context) =>
-                  JadwalBloc(context.read<JadwalRepo>())..add(LoadJadwal()),
+          create: (context) => JadwalBloc(context.read<JadwalRepo>()),
         ),
       ],
       child: Scaffold(
@@ -58,6 +58,13 @@ class SiswaPage extends StatelessWidget {
                 ),
               );
             } else if (state is StudentProfileLoaded) {
+              final rombelId = state.student.rombelId;
+              if (rombelId != null) {
+                // Pastikan hanya trigger sekali, misal dengan Future.microtask
+                Future.microtask(() {
+                  context.read<JadwalBloc>().add(LoadJadwal(rombelId));
+                });
+              }
               return SingleChildScrollView(
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
@@ -154,6 +161,9 @@ class SiswaPage extends StatelessWidget {
                             title: menuItems[index],
                             onTap: () {
                               // Handle menu item tap
+                              if (menuItems[index] == 'Jadwal Pelajaran') {
+                                context.goNamed(Routes.jadwal, extra: rombelId);
+                              }
                             },
                           );
                         },

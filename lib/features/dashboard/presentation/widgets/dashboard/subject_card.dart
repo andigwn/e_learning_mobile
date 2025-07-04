@@ -24,7 +24,7 @@ class SubjectCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                jadwal.mapel!,
+                jadwal.mapel ?? '-',
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -37,14 +37,14 @@ class SubjectCard extends StatelessWidget {
                   const Icon(Icons.access_time, size: 14, color: Colors.white),
                   const SizedBox(width: 5),
                   Text(
-                    '${jadwal.jamMulai!} - ${jadwal.jamSelesai!}',
+                    '${jadwal.jamMulai ?? '-'} - ${jadwal.jamSelesai ?? '-'}',
                     style: const TextStyle(color: Colors.white),
                   ),
                   const SizedBox(width: 15),
                   const Icon(Icons.room, size: 14, color: Colors.white),
                   const SizedBox(width: 5),
                   Text(
-                    jadwal.ruangan!,
+                    jadwal.rombel ?? '-',
                     style: const TextStyle(color: Colors.white),
                   ),
                 ],
@@ -55,7 +55,7 @@ class SubjectCard extends StatelessWidget {
                   const Icon(Icons.person, size: 14, color: Colors.white),
                   const SizedBox(width: 5),
                   Text(
-                    jadwal.guru!,
+                    jadwal.guru ?? '-',
                     style: const TextStyle(color: Colors.white),
                   ),
                 ],
