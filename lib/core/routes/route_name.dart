@@ -7,4 +7,5 @@ abstract class Routes {
   static const jadwal = "jadwal";
   static const absensi = "absensi";
   static const tugas = "tugas";
+  static const pengumpulanTugas = "pengumpulan-tugas";
 }

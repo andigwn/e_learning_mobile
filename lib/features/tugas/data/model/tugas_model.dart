@@ -1,7 +1,7 @@
 import 'package:e_learning_mobile/features/jadwal/data/model/jadwal_model.dart';
 
 class Tugas {
-  final String? id;
+  final int? id;
   final String? idJadwal;
   final String? judul;
   final String? deskripsi;
@@ -21,7 +21,7 @@ class Tugas {
 
   factory Tugas.fromJson(Map<String, dynamic> json) {
     return Tugas(
-      id: json['id_tugas'].toString(),
+      id: json['id_tugas'],
       idJadwal: json['id_jadwal'].toString(),
       judul: json['judul'].toString(),
       deskripsi: json['deskripsi'].toString(),

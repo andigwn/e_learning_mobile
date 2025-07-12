@@ -10,6 +10,7 @@ import 'package:e_learning_mobile/features/dashboard/presentation/pages/siswa/da
 import 'package:e_learning_mobile/features/jadwal/bloc/jadwal_bloc.dart';
 import 'package:e_learning_mobile/features/jadwal/domain/repositories/jadwal_repo.dart';
 import 'package:e_learning_mobile/features/jadwal/persentation/jadwal_page.dart';
+import 'package:e_learning_mobile/features/pengumpulan_tugas/presentation/pengumpulan_tugas.dart';
 import 'package:e_learning_mobile/features/splashscreen/splashscreen.dart';
 import 'package:e_learning_mobile/features/tugas/bloc/tugas_bloc.dart';
 import 'package:e_learning_mobile/features/tugas/domain/respository/tugas_repo.dart';
@@ -130,6 +131,22 @@ class AppRouter {
                     ),
                   );
                 },
+                routes: [
+                  GoRoute(
+                    path: "pengumpulan-tugas",
+                    name: Routes.pengumpulanTugas,
+                    pageBuilder: (context, state) {
+                      final args = state.extra as Map<String, dynamic>;
+                      return MaterialPage(
+                        child: PengumpulanTugasPage(
+                          siswaId: args['siswaId'],
+                          tugasId: args['tugasId'],
+                        ),
+                        key: state.pageKey,
+                      );
+                    },
+                  ),
+                ],
               ),
             ],
           ),
