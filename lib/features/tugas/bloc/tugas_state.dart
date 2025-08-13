@@ -11,6 +11,8 @@ final class TugasInitial extends TugasState {}
 
 final class TugasLoading extends TugasState {}
 
+final class TugasEmpty extends TugasState {} // State baru untuk data kosong
+
 final class TugasLoaded extends TugasState {
   final List<Tugas> tugas;
 

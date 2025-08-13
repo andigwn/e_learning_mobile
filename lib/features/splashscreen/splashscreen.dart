@@ -28,10 +28,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
     if (authStatus['hasToken']) {
       switch (authStatus['roleId']) {
-        case 2:
-          context.go('/teacher-dashboard');
-          break;
-        case 3:
+        case 1:
           context.goNamed(Routes.home);
           break;
         default:

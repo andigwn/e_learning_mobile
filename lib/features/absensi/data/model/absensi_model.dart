@@ -1,59 +1,103 @@
 class Absensi {
-  final int? idAbsensi;
-  final int? idSiswa;
-  final int? idJadwal;
-  final String? tanggal;
-  final int? pertemuan;
-  final String? status;
+  final int idAbsensi;
+  final int idSiswaRombel;
+  final int idJadwal;
+  final DateTime tanggal;
+  final String status;
+  final int pertemuan;
   final double? latitude;
   final double? longitude;
   final String? alamatIp;
   final String? deviceId;
-  final String? statusVerifikasi;
-  final String? verifikasiAbsensi;
+  final String statusVerifikasi;
+  final String verifikasiAbsensi;
+  final Map<String, dynamic>? siswaRombel;
+  final Map<String, dynamic>? jadwal;
 
   Absensi({
-    this.idAbsensi,
-    this.idSiswa,
-    this.idJadwal,
-    this.tanggal,
-    this.pertemuan,
-    this.status,
+    required this.idAbsensi,
+    required this.idSiswaRombel,
+    required this.idJadwal,
+    required this.tanggal,
+    required this.status,
+    required this.pertemuan,
     this.latitude,
     this.longitude,
     this.alamatIp,
     this.deviceId,
-    this.statusVerifikasi,
-    this.verifikasiAbsensi,
+    required this.statusVerifikasi,
+    required this.verifikasiAbsensi,
+    this.siswaRombel,
+    this.jadwal,
   });
 
-  factory Absensi.fromJson(Map<String, dynamic> json) => Absensi(
-    idAbsensi: json['id_absensi'] ?? 0,
-    idSiswa: json['id_siswa'] ?? 0,
-    idJadwal: json['id_jadwal'] ?? 0,
-    tanggal: json['tanggal'] ?? '',
-    pertemuan: json['pertemuan'] ?? 0,
-    status: json['status'] ?? '',
-    latitude: (json['latitude'] as num?)?.toDouble() ?? 0.0,
-    longitude: (json['longitude'] as num?)?.toDouble() ?? 0.0,
-    alamatIp: json['alamat_ip'] ?? '',
-    deviceId: json['device_id'] ?? '',
-    statusVerifikasi: json['status_verifikasi'] ?? '',
-    verifikasiAbsensi: json['verifikasi_absensi'] ?? '',
-  );
+  factory Absensi.fromJson(Map<String, dynamic> json) {
+    // Helper functions for safe parsing
+    int parseInt(dynamic value) {
+      if (value == null) return 0;
+      if (value is int) return value;
+      if (value is String) return int.tryParse(value) ?? 0;
+      return 0;
+    }
 
-  Map<String, dynamic> toJson() => {
-    'id_absensi': idAbsensi,
-    'id_siswa': idSiswa,
-    'id_jadwal': idJadwal,
-    'tanggal': tanggal,
-    'pertemuan': pertemuan,
-    'status': status,
-    'latitude': latitude,
-    'longitude': longitude,
-    'alamat_ip': alamatIp,
-    'device_id': deviceId,
-    'status_verifikasi': statusVerifikasi,
-    'verifikasi_absensi': verifikasiAbsensi,
-  };
+    double? parseDouble(dynamic value) {
+      if (value == null) return null;
+      if (value is double) return value;
+      if (value is int) return value.toDouble();
+      if (value is String) return double.tryParse(value);
+      return null;
+    }
+
+    DateTime parseDate(dynamic value) {
+      try {
+        if (value == null) return DateTime.now();
+        if (value is DateTime) return value;
+        if (value is String) {
+          // Handle both date and datetime strings
+          if (value.contains('T')) {
+            return DateTime.parse(value).toLocal();
+          } else {
+            return DateTime.parse(value).toLocal();
+          }
+        }
+        return DateTime.now();
+      } catch (e) {
+        return DateTime.now();
+      }
+    }
+
+    Map<String, dynamic>? parseMap(dynamic value) {
+      if (value == null) return null;
+      if (value is Map<String, dynamic>) return value;
+      if (value is Map) return Map<String, dynamic>.from(value);
+      return null;
+    }
+
+    return Absensi(
+      idAbsensi: parseInt(json['id_absensi']),
+      idSiswaRombel: parseInt(json['id_siswa_rombel']),
+      idJadwal: parseInt(json['id_jadwal']),
+      tanggal: parseDate(json['tanggal']),
+      status: json['status']?.toString() ?? 'Alpa',
+      pertemuan: parseInt(json['pertemuan']),
+      latitude: parseDouble(json['latitude']),
+      longitude: parseDouble(json['longitude']),
+      alamatIp: json['alamat_ip']?.toString(),
+      deviceId: json['device_id']?.toString(),
+      statusVerifikasi:
+          json['status_verifikasi']?.toString() ?? 'Terverifikasi',
+      verifikasiAbsensi: json['verifikasi_absensi']?.toString() ?? 'TepatWaktu',
+      siswaRombel: parseMap(json['siswa_rombel']),
+      jadwal: parseMap(json['jadwal']),
+    );
+  }
+
+  String get ruangan {
+    if (jadwal != null &&
+        jadwal!['ruangan'] is Map &&
+        jadwal!['ruangan']['nama_ruangan'] != null) {
+      return jadwal!['ruangan']['nama_ruangan'] as String;
+    }
+    return '-';
+  }
 }

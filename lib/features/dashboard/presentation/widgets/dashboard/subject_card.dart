@@ -1,62 +1,52 @@
-// widgets/subject_card.dart
 import 'package:e_learning_mobile/features/jadwal/data/model/jadwal_model.dart';
 import 'package:flutter/material.dart';
 
 class SubjectCard extends StatelessWidget {
   final Jadwal jadwal;
-  final VoidCallback? onTap;
+  final VoidCallback onTap;
 
-  const SubjectCard({super.key, required this.jadwal, this.onTap});
+  const SubjectCard({super.key, required this.jadwal, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      color: const Color(0xFF328E6E),
-      margin: const EdgeInsets.only(bottom: 10),
       elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      margin: const EdgeInsets.symmetric(vertical: 5),
       child: InkWell(
-        borderRadius: BorderRadius.circular(10),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(12.0),
+          padding: const EdgeInsets.all(12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                jadwal.mapel ?? '-',
+                jadwal.guruMapel.mapel['nama_mapel'],
                 style: const TextStyle(
-                  fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                  fontSize: 16,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-              const SizedBox(height: 5),
+              const SizedBox(height: 8),
               Row(
                 children: [
-                  const Icon(Icons.access_time, size: 14, color: Colors.white),
-                  const SizedBox(width: 5),
+                  const Icon(Icons.access_time, size: 16),
+                  const SizedBox(width: 4),
                   Text(
-                    '${jadwal.jamMulai ?? '-'} - ${jadwal.jamSelesai ?? '-'}',
-                    style: const TextStyle(color: Colors.white),
+                    '${jadwal.jamMulai} - ${jadwal.jamSelesai}',
+                    style: const TextStyle(fontSize: 14),
                   ),
-                  const SizedBox(width: 15),
-                  const Icon(Icons.room, size: 14, color: Colors.white),
-                  const SizedBox(width: 5),
-                  Text(
-                    jadwal.rombel ?? '-',
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 5),
-              Row(
-                children: [
-                  const Icon(Icons.person, size: 14, color: Colors.white),
-                  const SizedBox(width: 5),
-                  Text(
-                    jadwal.guru ?? '-',
-                    style: const TextStyle(color: Colors.white),
+                  const Spacer(),
+                  const Icon(Icons.person, size: 16),
+                  const SizedBox(width: 4),
+                  Flexible(
+                    child: Text(
+                      jadwal.guruMapel.guru['nama'],
+                      style: const TextStyle(fontSize: 14),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ],
               ),

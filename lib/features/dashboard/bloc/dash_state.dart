@@ -6,10 +6,10 @@ class StudentInitial extends StudentState {}
 
 class StudentLoading extends StudentState {}
 
-class StudentProfileLoaded extends StudentState {
-  final Student student;
+class StudentDashboardLoaded extends StudentState {
+  final DashboardResponse dashboard;
 
-  StudentProfileLoaded(this.student);
+  StudentDashboardLoaded(this.dashboard);
 }
 
 class AllStudentsLoaded extends StudentState {

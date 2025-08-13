@@ -25,7 +25,7 @@ class MyApp extends StatelessWidget {
         BlocProvider<StudentBloc>(
           create:
               (context) =>
-                  StudentBloc(StudentRepository())..add(LoadStudentProfile()),
+                  StudentBloc(StudentRepository())..add(LoadStudentDashboard()),
         ),
         RepositoryProvider<AuthRepositoryImpl>(
           create: (context) => AuthRepositoryImpl(),

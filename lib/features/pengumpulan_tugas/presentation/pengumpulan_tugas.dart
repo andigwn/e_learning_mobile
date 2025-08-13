@@ -1,17 +1,17 @@
-import 'package:e_learning_mobile/features/pengumpulan_tugas/domain/repository/pengumpulan_tugas_repo.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:e_learning_mobile/features/pengumpulan_tugas/bloc/pengumpulan_tugas_bloc.dart';
-import 'package:e_learning_mobile/features/pengumpulan_tugas/data/model/pengumpulan_tugas_model.dart';
-import 'package:intl/intl.dart';
+import 'package:e_learning_mobile/features/pengumpulan_tugas/presentation/widgets/pengumpulan_form.dart';
+import 'package:e_learning_mobile/features/pengumpulan_tugas/presentation/widgets/riwayat_list.dart';
+import 'package:flutter/scheduler.dart';
 
 class PengumpulanTugasPage extends StatefulWidget {
-  final int siswaId;
+  final int siswaRombelId;
   final int tugasId;
 
   const PengumpulanTugasPage({
     super.key,
-    required this.siswaId,
+    required this.siswaRombelId,
     required this.tugasId,
   });
 
@@ -19,227 +19,287 @@ class PengumpulanTugasPage extends StatefulWidget {
   State<PengumpulanTugasPage> createState() => _PengumpulanTugasPageState();
 }
 
-class _PengumpulanTugasPageState extends State<PengumpulanTugasPage> {
-  final _linkController = TextEditingController();
+class _PengumpulanTugasPageState extends State<PengumpulanTugasPage>
+    with SingleTickerProviderStateMixin {
+  final _scrollController = ScrollController();
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_scrollListener);
+
+    // Inisialisasi controller animasi
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+
+    // Setup animasi fade
+    _fadeAnimation = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    );
+
+    // Setup animasi slide
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.3),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeOutBack),
+    );
+
+    // Jalankan animasi
+    _animationController.forward();
+
+    // Inisialisasi data setelah frame pertama selesai
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      // context.read<PengumpulanTugasBloc>().add(
+      //   LoadPengumpulanSiswa(
+      //     tugasId: widget.tugasId,
+      //     siswaRombelId: widget.siswaRombelId,
+      //   ),
+      // );
+      context.read<PengumpulanTugasBloc>().add(
+        LoadRiwayatPengumpulanTugasSiswa(
+          siswaRombelId: widget.siswaRombelId,
+          tugasId: widget.tugasId,
+          page: 1,
+          size: 10,
+        ),
+      );
+    });
+  }
 
   @override
   void dispose() {
-    _linkController.dispose();
+    _scrollController.dispose();
+    _animationController.dispose();
     super.dispose();
+  }
+
+  void _scrollListener() {
+    if (_scrollController.position.pixels ==
+        _scrollController.position.maxScrollExtent) {
+      context.read<PengumpulanTugasBloc>().add(
+        LoadRiwayatPengumpulanTugasSiswa(
+          siswaRombelId: widget.siswaRombelId,
+          tugasId: widget.tugasId,
+          page: 1,
+          size: 10,
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create:
-          (context) =>
-              PengumpulanTugasBloc(context.read<PengumpulanTugasRepository>())
-                ..add(
-                  LoadPengumpulanTugas(
-                    siswaId: widget.siswaId,
-                    tugasId: widget.tugasId,
+    return Scaffold(
+      backgroundColor: Colors.grey[50],
+      body: CustomScrollView(
+        slivers: [
+          SliverAppBar(
+            // expandedHeight: 150,
+            pinned: true,
+            floating: true,
+            flexibleSpace: FlexibleSpaceBar(
+              title: const Text(
+                'Pengumpulan Tugas',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  shadows: [
+                    Shadow(
+                      blurRadius: 4,
+                      color: Colors.black26,
+                      offset: Offset(1, 1),
+                    ),
+                  ],
+                ),
+              ),
+              centerTitle: true,
+              background: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.teal.shade700,
+                      Colors.teal.shade500,
+                      Colors.teal.shade400,
+                    ],
                   ),
                 ),
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Pengumpulan Tugas'),
-          backgroundColor: const Color(0xFF328E6E),
-        ),
-        body: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            children: [
-              TextField(
-                controller: _linkController,
-                decoration: const InputDecoration(
-                  labelText: 'Link Tugas',
-                  hintText: 'Masukkan URL tugas (Google Drive, YouTube, dll)',
-                  border: OutlineInputBorder(),
-                ),
+                child: const SizedBox.expand(),
               ),
-              const SizedBox(height: 20),
-              _buildSubmitSection(context),
-              const SizedBox(height: 20),
-              const Divider(),
-              const SizedBox(height: 10),
-              const Text(
-                'Riwayat Pengumpulan',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.refresh, color: Colors.white),
+                onPressed: () {
+                  // context.read<PengumpulanTugasBloc>().add(
+                  //   LoadPengumpulanSiswa(
+                  //     tugasId: widget.tugasId,
+                  //     siswaRombelId: widget.siswaRombelId,
+                  //   ),
+                  // );
+                  context.read<PengumpulanTugasBloc>().add(
+                    LoadRiwayatPengumpulanTugasSiswa(
+                      siswaRombelId: widget.siswaRombelId,
+                      tugasId: widget.tugasId,
+                      page: 1,
+                      size: 10,
+                    ),
+                  );
+                },
               ),
-              const SizedBox(height: 10),
-              _buildHistoryList(),
             ],
           ),
-        ),
-      ),
-    );
-  }
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: BlocBuilder<PengumpulanTugasBloc, PengumpulanTugasState>(
+                builder: (context, state) {
+                  final hasPengumpulan =
+                      state is PengumpulanTugasLoaded &&
+                      state.pengumpulan != null;
 
-  Widget _buildSubmitSection(BuildContext context) {
-    return BlocConsumer<PengumpulanTugasBloc, PengumpulanTugasState>(
-      listener: (context, state) {
-        if (state is PengumpulanTugasSuccess) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Tugas berhasil dikumpulkan!'),
-              backgroundColor: Colors.green,
-            ),
-          );
-          _linkController.clear();
-        } else if (state is PengumpulanTugasError) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(state.message), backgroundColor: Colors.red),
-          );
-        }
-      },
-      builder: (context, state) {
-        return ElevatedButton(
-          onPressed:
-              state is PengumpulanTugasSubmitting
-                  ? null
-                  : () {
-                    if (_linkController.text.isNotEmpty) {
-                      final submissionDate = DateFormat(
-                        'yyyy-MM-dd',
-                      ).format(DateTime.now());
-                      context.read<PengumpulanTugasBloc>().add(
-                        SubmitTugas(
-                          siswaId: widget.siswaId,
-                          tugasId: widget.tugasId,
-                          linkTugas: _linkController.text,
-                          tanggalPengumpulan: submissionDate,
-                        ),
-                      );
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Link tugas tidak boleh kosong'),
-                        ),
-                      );
-                    }
-                  },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF328E6E),
-            padding: const EdgeInsets.symmetric(vertical: 14),
-            minimumSize: const Size(double.infinity, 0),
-          ),
-          child:
-              state is PengumpulanTugasSubmitting
-                  ? const CircularProgressIndicator(color: Colors.white)
-                  : const Text('Kirim Tugas', style: TextStyle(fontSize: 16)),
-        );
-      },
-    );
-  }
-
-  Widget _buildHistoryList() {
-    return Expanded(
-      child: BlocBuilder<PengumpulanTugasBloc, PengumpulanTugasState>(
-        builder: (context, state) {
-          if (state is PengumpulanTugasLoading) {
-            return const Center(child: CircularProgressIndicator());
-          } else if (state is PengumpulanTugasLoaded) {
-            // Tidak perlu menambahkan submission manual karena sudah di-handle oleh bloc
-            if (state.listTugas.isEmpty) {
-              return const Center(child: Text('Belum ada riwayat pengumpulan'));
-            }
-
-            return ListView.builder(
-              itemCount: state.listTugas.length,
-              itemBuilder: (context, index) {
-                final tugas = state.listTugas[index];
-                return _buildPengumpulanCard(tugas);
-              },
-            );
-          } else if (state is PengumpulanTugasError) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.error, color: Colors.red, size: 48),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Gagal memuat data',
-                    style: TextStyle(fontSize: 18, color: Colors.grey[700]),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    state.message,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.grey[600]),
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed:
-                        () => context.read<PengumpulanTugasBloc>().add(
-                          LoadPengumpulanTugas(
-                            siswaId: widget.siswaId,
-                            tugasId: widget.tugasId,
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      FadeTransition(
+                        opacity: _fadeAnimation,
+                        child: SlideTransition(
+                          position: _slideAnimation,
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  Colors.teal.shade50,
+                                  Colors.teal.shade100,
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.teal.shade100,
+                                  blurRadius: 10,
+                                  spreadRadius: 2,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(
+                                      hasPengumpulan
+                                          ? Icons.check_circle
+                                          : Icons.assignment,
+                                      color:
+                                          hasPengumpulan
+                                              ? Colors.green.shade700
+                                              : Colors.teal.shade700,
+                                      size: 30,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        hasPengumpulan
+                                            ? 'Tugas Telah Dikumpulkan'
+                                            : 'Kirim Tugas Anda',
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                          color:
+                                              hasPengumpulan
+                                                  ? Colors.green.shade800
+                                                  : Colors.teal.shade800,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 10),
+                                Text(
+                                  hasPengumpulan
+                                      ? 'Anda dapat memperbarui pengumpulan sebelum deadline'
+                                      : 'Silakan kumpulkan tugas sebelum deadline',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey[700],
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                    child: const Text('Coba Lagi'),
-                  ),
-                ],
-              ),
-            );
-          }
-          return const SizedBox();
-        },
-      ),
-    );
-  }
+                      ),
+                      const SizedBox(height: 25),
 
-  Widget _buildPengumpulanCard(PengumpulanTugas tugas) {
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Dikumpulkan: ${DateFormat('dd MMM yyyy').format(DateTime.parse(tugas.tanggalPengumpulan))}',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-                Chip(
-                  label: Text(tugas.status),
-                  backgroundColor:
-                      tugas.status == 'Dikumpulkan'
-                          ? Colors.green[100]
-                          : Colors.orange[100],
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Link Tugas: ${tugas.linkTugas}',
-              style: TextStyle(color: Colors.grey[700]),
-            ),
-            if (tugas.nilai > 0) ...[
-              const SizedBox(height: 8),
-              Text(
-                'Nilai: ${tugas.nilai}',
-                style: const TextStyle(fontWeight: FontWeight.bold),
+                      PengumpulanForm(
+                        siswaRombelId: widget.siswaRombelId,
+                        tugasId: widget.tugasId,
+                        hasPengumpulan: hasPengumpulan,
+                      ),
+
+                      const SizedBox(height: 30),
+                      Divider(
+                        thickness: 1,
+                        color: Colors.grey[300],
+                        height: 20,
+                        indent: 20,
+                        endIndent: 20,
+                      ),
+                      const SizedBox(height: 15),
+
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.history,
+                              color: Colors.teal.shade700,
+                              size: 24,
+                            ),
+                            const SizedBox(width: 10),
+                            Text(
+                              'Riwayat Pengumpulan',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.teal.shade800,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 15),
+                    ],
+                  );
+                },
               ),
-            ],
-            if (tugas.komentar.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Text(
-                'Komentar: ${tugas.komentar}',
-                style: TextStyle(
-                  color: Colors.grey[700],
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-            ],
-          ],
-        ),
+            ),
+          ),
+          SliverFillRemaining(
+            child: RiwayatList(
+              scrollController: _scrollController,
+              siswaRombelId: widget.siswaRombelId,
+              tugasId: widget.tugasId,
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -1,556 +1,365 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:e_learning_mobile/features/absensi/data/model/lokasi_model.dart';
+import 'package:e_learning_mobile/features/absensi/domain/repository/absensi_repository.dart';
 import 'package:e_learning_mobile/features/absensi/bloc/absensi_bloc.dart';
 import 'package:e_learning_mobile/features/dashboard/data/model/dashboard_model.dart';
 import 'package:e_learning_mobile/features/jadwal/data/model/jadwal_model.dart';
+import 'package:e_learning_mobile/features/dashboard/domain/repositories/student_repo.dart';
+import 'package:e_learning_mobile/features/jadwal/domain/repositories/jadwal_repo.dart';
+import 'views/absensi_loading_view.dart';
+import 'views/absensi_error_view.dart';
+import 'views/absensi_main_view.dart';
 
 class AbsensiPage extends StatefulWidget {
-  final Student student;
-  final Jadwal jadwal;
-  const AbsensiPage({Key? key, required this.student, required this.jadwal})
-    : super(key: key);
+  final int siswaRombelId;
+  final int jadwalId;
+  const AbsensiPage({
+    super.key,
+    required this.siswaRombelId,
+    required this.jadwalId,
+  });
 
   @override
   State<AbsensiPage> createState() => _AbsensiPageState();
 }
 
 class _AbsensiPageState extends State<AbsensiPage> {
-  double sekolahLat = -0.063078;
-  double sekolahLng = 109.355868;
-  double maxDistance = 100; // meter
-
-  Future<void> _absenMasuk() async {
-    final siswa = widget.student;
-    final jadwal = widget.jadwal;
-    // 1. Ambil lokasi
-    final pos = await _getCurrentLocation();
-    if (pos == null) {
-      _showMessage('Lokasi tidak aktif atau izin ditolak');
-      return;
-    }
-    // 2. Cek radius
-    final inRange =
-        Geolocator.distanceBetween(
-          pos.latitude,
-          pos.longitude,
-          sekolahLat,
-          sekolahLng,
-        ) <=
-        maxDistance;
-    if (!inRange) {
-      _showMessage('Anda di luar jangkauan lokasi absen!');
-      return;
-    }
-    // 3. Hitung verifikasi_absensi
-    final now = DateTime.now();
-    final todayStr = DateFormat('yyyy-MM-dd').format(now);
-    final jamMulaiDt = DateFormat('HH:mm').parse(jadwal.jamMulai ?? '07:00');
-    final jamMulaiToday = DateTime(
-      now.year,
-      now.month,
-      now.day,
-      jamMulaiDt.hour,
-      jamMulaiDt.minute,
-    );
-    final terlambat = now.difference(jamMulaiToday).inMinutes > 15;
-    final verifikasiAbsensi = terlambat ? 'Terlambat' : 'TepatWaktu';
-    final statusVerifikasi = 'Terverifikasi';
-    // 4. Dispatch event ke Bloc
-    context.read<AbsensiBloc>().add(
-      AbsenMasukEvent(
-        siswaId: siswa.id ?? 0,
-        jadwalId: jadwal.id ?? 0,
-        tanggal: todayStr,
-        status: 'Hadir',
-        latitude: pos.latitude,
-        longitude: pos.longitude,
-        alamatIp: '', // Isi jika ada
-        deviceId: '', // Isi jika ada
-        statusVerifikasi: statusVerifikasi,
-        verifikasiAbsensi: verifikasiAbsensi,
-      ),
-    );
-  }
-
-  Future<Position?> _getCurrentLocation() async {
-    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) return null;
-    LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) return null;
-    }
-    if (permission == LocationPermission.deniedForever) return null;
-    return await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high,
-    );
-  }
-
-  void _showMessage(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-  }
+  late final AbsensiBloc _absensiBloc;
+  DashboardResponse? _siswaRombel;
+  Jadwal? _jadwal;
+  bool _isJadwalSelesai = false;
+  bool _isHariJadwal = false;
+  bool _isBelumMulai = false;
+  Timer? _jadwalTimer;
+  bool _isLoading = true;
+  String? _errorMessage;
+  LokasiModel? _lokasiSekolah;
+  bool _isLoadingLocation = false;
+  String? _locationError;
 
   @override
   void initState() {
     super.initState();
-    final siswa = widget.student;
-    final jadwal = widget.jadwal;
-    // Fetch absensi saat halaman dibuka
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<AbsensiBloc>().add(
-        LoadAbsensi(siswaId: siswa.id ?? 0, jadwalId: jadwal.id ?? 0),
+    _absensiBloc = context.read<AbsensiBloc>();
+    _loadData();
+    _loadSchoolLocation();
+  }
+
+  Future<void> _loadSchoolLocation() async {
+    if (_isLoadingLocation) return;
+
+    setState(() => _isLoadingLocation = true);
+
+    try {
+      final absensiRepo = context.read<AbsensiRepository>();
+      final locationData = await absensiRepo.getSchoolLocation();
+
+      setState(() {
+        _lokasiSekolah = LokasiModel(
+          id: locationData['id'] as int? ?? 0,
+          namaLokasi: locationData['nama_lokasi'] as String? ?? 'Sekolah',
+          latitudePusat: (locationData['latitude_pusat'] as num).toDouble(),
+          longitudePusat: (locationData['longitude_pusat'] as num).toDouble(),
+          radiusMeter: (locationData['radius_meter'] as num).toInt(),
+        );
+      });
+    } on AbsensiException catch (e) {
+      setState(() => _locationError = e.message);
+    } catch (e) {
+      setState(
+        () => _locationError = 'Gagal memuat data lokasi: ${e.toString()}',
       );
+    } finally {
+      if (mounted) setState(() => _isLoadingLocation = false);
+    }
+  }
+
+  Future<void> _loadData() async {
+    try {
+      final studentRepo = context.read<StudentRepository>();
+      final studentResponse = await studentRepo.getStudentDashboard();
+      setState(() => _siswaRombel = studentResponse);
+
+      final jadwalRepo = context.read<JadwalRepo>();
+      final jadwalList = await jadwalRepo.getJadwal(_siswaRombel!.rombel.id);
+      setState(
+        () =>
+            _jadwal = jadwalList.firstWhere(
+              (item) => item.id == widget.jadwalId,
+            ),
+      );
+
+      _updateJadwalStatus();
+      _checkHariJadwal();
+
+      _absensiBloc.add(
+        LoadAbsensiEvent(
+          siswaRombelId: widget.siswaRombelId,
+          jadwalId: widget.jadwalId,
+        ),
+      );
+
+      _jadwalTimer = Timer.periodic(const Duration(minutes: 1), (timer) {
+        if (mounted) {
+          setState(() {
+            _updateJadwalStatus();
+            _checkHariJadwal();
+          });
+        }
+      });
+
+      setState(() => _isLoading = false);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'Gagal memuat data: ${e.toString()}';
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _jadwalTimer?.cancel();
+    super.dispose();
+  }
+
+  void _checkHariJadwal() {
+    if (_jadwal == null) return;
+
+    final now = DateTime.now();
+    final today = DateFormat('EEEE', 'id_ID').format(now).toLowerCase();
+    final hariJadwal = _jadwal!.hari.name.toLowerCase();
+
+    setState(() => _isHariJadwal = today == hariJadwal);
+  }
+
+  void _updateJadwalStatus() {
+    if (_jadwal == null) return;
+
+    setState(() {
+      _isJadwalSelesai = _calculateJadwalSelesai();
+      _isBelumMulai = _calculateBelumMulai();
     });
+  }
+
+  bool _calculateJadwalSelesai() {
+    try {
+      final now = DateTime.now();
+      final jamSelesaiStr = _jadwal!.jamSelesai.format(context);
+      final jamSelesaiDt = DateFormat('HH:mm').parse(jamSelesaiStr);
+
+      final jamSelesaiToday = DateTime(
+        now.year,
+        now.month,
+        now.day,
+        jamSelesaiDt.hour,
+        jamSelesaiDt.minute,
+      );
+
+      return now.isAfter(jamSelesaiToday);
+    } catch (e) {
+      debugPrint('Error checking jadwal: $e');
+      return true;
+    }
+  }
+
+  bool _calculateBelumMulai() {
+    try {
+      final now = DateTime.now();
+      final jamMulaiStr = _jadwal!.jamMulai.format(context);
+      final jamMulaiDt = DateFormat('HH:mm').parse(jamMulaiStr);
+
+      final jamMulaiToday = DateTime(
+        now.year,
+        now.month,
+        now.day,
+        jamMulaiDt.hour,
+        jamMulaiDt.minute,
+      );
+
+      return now.isBefore(jamMulaiToday);
+    } catch (e) {
+      debugPrint('Error checking jam mulai: $e');
+      return false;
+    }
+  }
+
+  Future<void> _absenMasuk() async {
+    if (!mounted || _jadwal == null || _siswaRombel == null) return;
+
+    if (_isBelumMulai) return _showMessage('Belum waktu absen');
+    if (_isJadwalSelesai) return _showMessage('Waktu absen sudah berakhir');
+    if (!_isHariJadwal) {
+      return _showMessage('Hari ini bukan jadwal ${_jadwal!.hari.name}');
+    }
+
+    final position = await _getCurrentLocation();
+    if (position == null) return;
+
+    final inRange = await _checkDistance(position);
+    if (!inRange!) return _showMessage('Anda berada di luar area sekolah');
+
+    _absensiBloc.add(
+      AbsenMasukEvent(
+        siswaRombelId: widget.siswaRombelId,
+        jadwalId: widget.jadwalId,
+        latitude: position.latitude,
+        longitude: position.longitude,
+      ),
+    );
+  }
+
+  Future<bool?> _checkDistance(Position position) async {
+    if (_isLoadingLocation) {
+      return _showMessageAndReturn('Sedang memverifikasi lokasi...', false);
+    }
+    if (_locationError != null) {
+      return _showMessageAndReturn(_locationError!, false);
+    }
+    if (_lokasiSekolah == null) {
+      return _showMessageAndReturn('Data lokasi sekolah belum tersedia', false);
+    }
+
+    try {
+      final distance = Geolocator.distanceBetween(
+        position.latitude,
+        position.longitude,
+        _lokasiSekolah!.latitudePusat,
+        _lokasiSekolah!.longitudePusat,
+      );
+
+      final isInRange = distance <= _lokasiSekolah!.radiusMeter;
+      if (!isInRange) {
+        _showMessage('Anda ${distance.toStringAsFixed(0)}m dari sekolah');
+      }
+
+      return isInRange;
+    } catch (e) {
+      debugPrint('Distance calculation error: $e');
+      return _showMessageAndReturn('Gagal memverifikasi lokasi', false);
+    }
+  }
+
+  Future<Position?> _getCurrentLocation() async {
+    try {
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        return _showMessageAndReturn(
+          'Aktifkan layanan lokasi untuk absen',
+          null,
+        );
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          return _showMessageAndReturn('Izin lokasi ditolak', null);
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        return _showMessageAndReturn(
+          'Buka pengaturan untuk mengizinkan lokasi',
+          null,
+        );
+      }
+
+      return await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          distanceFilter: 0,
+          timeLimit: Duration(seconds: 15),
+        ),
+      );
+    } catch (e) {
+      debugPrint('Location error: $e');
+      return _showMessageAndReturn('Gagal mendapatkan lokasi', null);
+    }
+  }
+
+  void _showMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.blue[700],
+        duration: const Duration(seconds: 3),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
+
+  T? _showMessageAndReturn<T>(String message, T? returnValue) {
+    _showMessage(message);
+    return returnValue;
+  }
+
+  Future<void> _handleRefresh() async {
+    _absensiBloc.add(
+      LoadAbsensiEvent(
+        siswaRombelId: widget.siswaRombelId,
+        jadwalId: widget.jadwalId,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final siswa = widget.student;
-    final jadwal = widget.jadwal;
-    // Cek apakah hari dan jam sudah selesai
-    final now = DateTime.now();
-    final hariSekarang = DateFormat('EEEE', 'id_ID').format(now).toLowerCase();
-    final hariJadwal = (jadwal.hari ?? '').toLowerCase();
-    final jamSelesai = jadwal.jamSelesai;
-    bool isJadwalSelesai = false;
-    if (hariSekarang != hariJadwal) {
-      isJadwalSelesai = true;
-    } else if (jamSelesai != null) {
-      try {
-        final jamSelesaiDt = DateFormat('HH:mm').parse(jamSelesai);
-        final jamSelesaiToday = DateTime(
-          now.year,
-          now.month,
-          now.day,
-          jamSelesaiDt.hour,
-          jamSelesaiDt.minute,
-        );
-        if (now.isAfter(jamSelesaiToday)) {
-          isJadwalSelesai = true;
-        }
-      } catch (_) {}
+    if (_isLoading) return const AbsensiLoadingView();
+    if (_errorMessage != null) {
+      return AbsensiErrorView(
+        errorMessage: _errorMessage!,
+        onBackPressed: () => Navigator.pop(context),
+      );
+    }
+    if (_siswaRombel == null || _jadwal == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Error')),
+        body: const Center(
+          child: Text('Data siswa atau jadwal tidak ditemukan'),
+        ),
+      );
     }
 
-    return BlocListener<AbsensiBloc, AbsensiState>(
-      listener: (context, state) {
-        if (state is AbsensiSuccess) {
-          _showMessage('Absen berhasil!');
-        } else if (state is AbsensiError) {
-          _showMessage(state.message);
-        } else if (state is AbsensiLoaded) {
-          // AUTO-ABSEN LOGIC
-          final absensiList = state.absensiList;
-          final now = DateTime.now();
-          final hariSekarang =
-              DateFormat('EEEE', 'id_ID').format(now).toLowerCase();
-          final hariJadwal = (widget.jadwal.hari ?? '').toLowerCase();
-          final jamSelesai = widget.jadwal.jamSelesai;
-          final siswa = widget.student;
-          final jadwal = widget.jadwal;
-          bool isJadwalSelesai = false;
-          if (hariSekarang == hariJadwal && jamSelesai != null) {
-            try {
-              final jamSelesaiDt = DateFormat('HH:mm').parse(jamSelesai);
-              final jamSelesaiToday = DateTime(
-                now.year,
-                now.month,
-                now.day,
-                jamSelesaiDt.hour,
-                jamSelesaiDt.minute,
-              );
-              if (now.isAfter(jamSelesaiToday)) {
-                isJadwalSelesai = true;
-              }
-            } catch (_) {}
-          }
-          // Cek jika sudah lewat jam selesai, hari ini jadwal, dan belum absen hari ini
-          if (hariSekarang == hariJadwal && isJadwalSelesai) {
-            final todayStr = DateFormat('yyyy-MM-dd').format(now);
-            final sudahAbsen = absensiList.any(
-              (a) =>
-                  a.tanggal == todayStr &&
-                  (a.status == 'Hadir' || a.status == 'Terlambat'),
-            );
-            final sudahTidakHadir = absensiList.any(
-              (a) => a.tanggal == todayStr && a.status == 'Tidak Hadir',
-            );
-            if (!sudahAbsen && !sudahTidakHadir) {
-              // Trigger auto-absen Tidak Hadir
-              context.read<AbsensiBloc>().add(
-                AbsenMasukEvent(
-                  siswaId: siswa.id ?? 0,
-                  jadwalId: jadwal.id ?? 0,
-                  tanggal: todayStr,
-                  status: 'Alpa',
-                  latitude: 0.0,
-                  longitude: 0.0,
-                  alamatIp: '',
-                  deviceId: '',
-                  statusVerifikasi: 'Ditolak',
-                  verifikasiAbsensi: 'Terlambat',
-                ),
-              );
-            }
-          }
-        }
-      },
-      child: Scaffold(
-        appBar: AppBar(
-          backgroundColor: const Color(0xFF328E6E),
-          title: const Text(
-            'Absensi Siswa',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-          ),
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
-            onPressed: () => Navigator.of(context).pop(),
-          ),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text(
+          'Absensi Siswa',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
-        body: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16),
-            child: Column(
-              children: [
-                const SizedBox(height: 16),
-                // Placeholder for image
-                Container(
-                  width: 120,
-                  height: 120,
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.black26),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(Icons.image, size: 60),
-                ),
-                const SizedBox(height: 24),
-                // Info Siswa
-                Column(
-                  children: [
-                    _InfoRow(
-                      icon: Icons.person,
-                      label: "Nama Siswa",
-                      value: siswa.name ?? '-',
-                    ),
-                    _InfoRow(
-                      icon: Icons.class_,
-                      label: "Kelas",
-                      value: siswa.rombelName ?? '-',
-                    ),
-                    _InfoRow(
-                      icon: Icons.menu_book,
-                      label: "Mata Pelajaran",
-                      value: jadwal.mapel ?? '-',
-                    ),
-                    _InfoRow(
-                      icon: Icons.access_time,
-                      label: "Jam Masuk - Jam Selesai",
-                      value:
-                          "${jadwal.jamMulai ?? '-'} - ${jadwal.jamSelesai ?? '-'}",
-                    ),
-                    _InfoRow(
-                      icon: Icons.calendar_today,
-                      label: "Tanggal",
-                      value: DateFormat('dd MMMM yyyy').format(DateTime.now()),
-                    ),
-                    const SizedBox(height: 32),
-                    BlocBuilder<AbsensiBloc, AbsensiState>(
-                      builder: (context, state) {
-                        final isLoading = state is AbsensiButtonLoading;
-                        return SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor:
-                                  isJadwalSelesai
-                                      ? Colors
-                                          .red // warna merah jika sudah selesai
-                                      : const Color.fromARGB(255, 240, 136, 31),
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                            ),
-                            onPressed:
-                                (isLoading || isJadwalSelesai)
-                                    ? null
-                                    : _absenMasuk,
-                            child:
-                                isJadwalSelesai
-                                    ? const Text(
-                                      "Sudah Selesai",
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        color: Colors.white,
-                                        letterSpacing: 1,
-                                      ),
-                                    )
-                                    : isLoading
-                                    ? const CircularProgressIndicator(
-                                      color: Colors.white,
-                                    )
-                                    : const Text(
-                                      "Absen Masuk",
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        color: Colors.white,
-                                        letterSpacing: 1,
-                                      ),
-                                    ),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                // Tabel Absensi
-                BlocBuilder<AbsensiBloc, AbsensiState>(
-                  builder: (context, state) {
-                    List<TableRow> rows = [
-                      TableRow(
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF328E6E),
-                        ),
-                        children: const [
-                          Padding(
-                            padding: EdgeInsets.all(8.0),
-                            child: Text(
-                              "Tanggal",
-                              style: TextStyle(color: Colors.white),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                          Padding(
-                            padding: EdgeInsets.all(8.0),
-                            child: Text(
-                              "Status",
-                              style: TextStyle(color: Colors.white),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                          Padding(
-                            padding: EdgeInsets.all(8.0),
-                            child: Text(
-                              "Verifikasi Absensi",
-                              style: TextStyle(color: Colors.white),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                          Padding(
-                            padding: EdgeInsets.all(8.0),
-                            child: Text(
-                              "Pertemuan",
-                              style: TextStyle(color: Colors.white),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ];
-
-                    if (state is AbsensiLoaded) {
-                      if (state.absensiList.isEmpty) {
-                        rows.add(
-                          TableRow(
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Text(
-                                  'Tidak ada data absensi',
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(color: Colors.grey),
-                                ),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Text('-', textAlign: TextAlign.center),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Text('-', textAlign: TextAlign.center),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Text('-', textAlign: TextAlign.center),
-                              ),
-                            ],
-                          ),
-                        );
-                      } else {
-                        rows.addAll(
-                          state.absensiList.map(
-                            (absensi) => TableRow(
-                              children: [
-                                Padding(
-                                  padding: const EdgeInsets.all(8.0),
-                                  child: Text(
-                                    absensi.tanggal ?? '',
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
-                                Padding(
-                                  padding: const EdgeInsets.all(8.0),
-                                  child: Text(
-                                    absensi.status ?? '',
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
-                                Padding(
-                                  padding: const EdgeInsets.all(8.0),
-                                  child: Text(
-                                    absensi.verifikasiAbsensi ?? '',
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
-                                Padding(
-                                  padding: const EdgeInsets.all(8.0),
-                                  child: Text(
-                                    absensi.pertemuan?.toString() ?? '',
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      }
-                    } else if (state is AbsensiLoading) {
-                      rows.add(
-                        TableRow(
-                          children: List.generate(
-                            4,
-                            (_) => const Padding(
-                              padding: EdgeInsets.all(8.0),
-                              child: Center(child: CircularProgressIndicator()),
-                            ),
-                          ),
-                        ),
-                      );
-                    } else if (state is AbsensiError) {
-                      if (state.lastAbsensi.isNotEmpty) {
-                        rows.addAll(
-                          state.lastAbsensi.map(
-                            (absensi) => TableRow(
-                              children: [
-                                Padding(
-                                  padding: const EdgeInsets.all(8.0),
-                                  child: Text(
-                                    absensi.tanggal ?? '',
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
-                                Padding(
-                                  padding: const EdgeInsets.all(8.0),
-                                  child: Text(
-                                    absensi.status ?? '',
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
-                                Padding(
-                                  padding: const EdgeInsets.all(8.0),
-                                  child: Text(
-                                    absensi.verifikasiAbsensi ?? '',
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
-                                Padding(
-                                  padding: const EdgeInsets.all(8.0),
-                                  child: Text(
-                                    absensi.pertemuan?.toString() ?? '',
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      } else {
-                        rows.add(
-                          TableRow(
-                            children: List.generate(
-                              4,
-                              (_) => Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Text("-", textAlign: TextAlign.center),
-                              ),
-                            ),
-                          ),
-                        );
-                      }
-                    } else {
-                      rows.add(
-                        TableRow(
-                          children: List.generate(
-                            4,
-                            (_) => const Padding(
-                              padding: EdgeInsets.all(8.0),
-                              child: Text("-", textAlign: TextAlign.center),
-                            ),
-                          ),
-                        ),
-                      );
-                    }
-
-                    return Table(
-                      border: TableBorder.all(color: const Color(0xFF328E6E)),
-                      columnWidths: const {
-                        0: FlexColumnWidth(2),
-                        1: FlexColumnWidth(2),
-                        2: FlexColumnWidth(2),
-                        3: FlexColumnWidth(2),
-                      },
-                      children: rows,
-                    );
-                  },
-                ),
-              ],
+        backgroundColor: const Color(0xFF328E6E),
+        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Colors.teal.shade700, Colors.teal.shade500],
             ),
           ),
         ),
       ),
-    );
-  }
-}
-
-class _InfoRow extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-
-  const _InfoRow({
-    required this.icon,
-    required this.label,
-    required this.value,
-    Key? key,
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
-      child: Row(
-        children: [
-          Icon(icon, size: 18),
-          const SizedBox(width: 8),
-          Expanded(
-            flex: 3,
-            child: Text(
-              label,
-              style: const TextStyle(fontWeight: FontWeight.w500),
-            ),
-          ),
-          const Text(" : "),
-          Expanded(
-            flex: 4,
-            child: Text(
-              value,
-              style: const TextStyle(fontWeight: FontWeight.w500),
-            ),
-          ),
-        ],
+      body: AbsensiMainView(
+        siswaRombelId: widget.siswaRombelId,
+        jadwalId: widget.jadwalId,
+        siswaRombel: _siswaRombel!,
+        jadwal: _jadwal!,
+        isJadwalSelesai: _isJadwalSelesai,
+        isHariJadwal: _isHariJadwal,
+        isBelumMulai: _isBelumMulai,
+        onAbsenMasuk: _absenMasuk,
+        onRefresh: _handleRefresh,
       ),
     );
   }

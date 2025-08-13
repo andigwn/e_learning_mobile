@@ -1,69 +1,116 @@
-import 'package:e_learning_mobile/features/dashboard/presentation/widgets/dashboard/build_header_icon.dart';
 import 'package:flutter/material.dart';
 
-class BuildHeaderLogo extends StatefulWidget {
+class BuildHeaderLogo extends StatelessWidget {
   const BuildHeaderLogo({super.key});
 
   @override
-  State<BuildHeaderLogo> createState() => _BuildHeaderLogoState();
-}
-
-class _BuildHeaderLogoState extends State<BuildHeaderLogo> {
-  @override
   Widget build(BuildContext context) {
-    return Card(
-      // color: Color(0xFF328E6E),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Stack(
-        children: [
-          Image.asset("assets/images/background.jpg"),
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Column(
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isSmallScreen = constraints.maxWidth < 600;
+        final logoSize = isSmallScreen ? 80.0 : 100.0;
+        final padding = isSmallScreen ? 12.0 : 16.0;
+
+        return Card(
+          elevation: 6,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors:
+                    isDarkMode
+                        ? [const Color(0xFF1A5D46), const Color(0xFF0D3B2A)]
+                        : [const Color(0xFF328E6E), const Color(0xFF1A5D46)],
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color:
+                      isDarkMode ? Colors.teal.shade800 : Colors.teal.shade300,
+                  blurRadius: 15,
+                  spreadRadius: 2,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+            ),
+            child: Stack(
               children: [
-                // Logo sekolah/kampus
-                Container(
-                  width: 90,
-                  height: 90,
-                  decoration: BoxDecoration(shape: BoxShape.circle),
-                  child: ClipOval(
-                    child: Image.asset(
-                      'assets/images/logo.png',
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Icon(Icons.school, size: 40, color: Colors.blue);
-                      },
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 10),
+                // Background image
+                _buildBackgroundImage(isSmallScreen),
 
-                // Nama institusi
-                const Text(
-                  'SMK Negeri 5 Pontianak',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                // Content
+                Padding(
+                  padding: EdgeInsets.all(padding),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Logo
+                      _buildLogo(logoSize),
+                      const SizedBox(height: 12),
+                    ],
                   ),
-                ),
-                const SizedBox(height: 50),
-
-                // Baris icon
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    BuildHeaderIcon(icon: Icons.notifications, label: 'Notif'),
-                    BuildHeaderIcon(icon: Icons.message, label: 'Pesan'),
-                    BuildHeaderIcon(icon: Icons.settings, label: 'Pengaturan'),
-                    BuildHeaderIcon(icon: Icons.help, label: 'Bantuan'),
-                  ],
                 ),
               ],
             ),
           ),
-        ],
+        );
+      },
+    );
+  }
+
+  Widget _buildBackgroundImage(bool isSmallScreen) {
+    return AnimatedOpacity(
+      duration: const Duration(milliseconds: 800),
+      opacity: 1,
+      child: Image.asset(
+        "assets/images/background.jpg",
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: isSmallScreen ? 180 : 200,
+        errorBuilder:
+            (context, error, stackTrace) =>
+                Container(color: Colors.teal.shade700),
+      ),
+    );
+  }
+
+  Widget _buildLogo(double size) {
+    return AnimatedScale(
+      scale: 1.0,
+      duration: const Duration(milliseconds: 600),
+      curve: Curves.easeOutBack,
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Color.fromRGBO(0, 0, 0, 0.1),
+              blurRadius: 10,
+              spreadRadius: 3,
+            ),
+          ],
+        ),
+        child: ClipOval(
+          child: Image.asset(
+            'assets/images/logo.png',
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) {
+              return Container(
+                color: Colors.teal.shade700,
+                child: const Icon(Icons.school, size: 40, color: Colors.white),
+              );
+            },
+          ),
+        ),
       ),
     );
   }

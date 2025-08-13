@@ -17,11 +17,13 @@ class LoginResponse {
 @JsonSerializable()
 class UserData {
   final String username;
+  // ignore: non_constant_identifier_names
   final int id_role;
   final String token;
 
   UserData({
     required this.username,
+    // ignore: non_constant_identifier_names
     required this.id_role,
     required this.token,
   });

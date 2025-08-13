@@ -21,7 +21,7 @@ class JadwalRepo {
         // Return list kosong agar UI tetap jalan, tidak lempar error
         return [];
       }
-      print(data);
+
       return data
           .where(
             (jadwalJson) =>

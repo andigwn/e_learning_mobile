@@ -7,50 +7,80 @@ part 'absensi_event.dart';
 part 'absensi_state.dart';
 
 class AbsensiBloc extends Bloc<AbsensiEvent, AbsensiState> {
-  final AbsensiRepository absensiRepository;
-  List<Absensi> _lastAbsensiList = [];
+  final AbsensiRepository repository;
 
-  AbsensiBloc(this.absensiRepository) : super(AbsensiInitial()) {
-    on<LoadAbsensi>((event, emit) async {
-      emit(AbsensiLoading());
-      try {
-        final absensiList = await absensiRepository.fetchAbsensiSiswa(
-          event.siswaId,
-          event.jadwalId,
-        );
-        _lastAbsensiList = absensiList;
-        emit(AbsensiLoaded(absensiList));
-      } catch (e) {
-        emit(AbsensiError(e.toString(), lastAbsensi: _lastAbsensiList));
+  AbsensiBloc(this.repository) : super(AbsensiInitial()) {
+    on<LoadAbsensiEvent>(_onLoadAbsensi);
+    on<AbsenMasukEvent>(_onAbsenMasuk);
+  }
+
+  Future<void> _onLoadAbsensi(
+    LoadAbsensiEvent event,
+    Emitter<AbsensiState> emit,
+  ) async {
+    try {
+      // Jika sudah ada data, kita tetap tampilkan loading indicator
+      // tetapi tanpa menghilangkan data yang ada
+      if (state is! AbsensiLoaded) {
+        emit(AbsensiLoading());
       }
-    });
 
-    on<AbsenMasukEvent>((event, emit) async {
-      emit(AbsensiButtonLoading());
-      try {
-        await absensiRepository.absenMasuk(
-          siswaId: event.siswaId,
+      final absensiList = await repository.getAbsensiBySiswaJadwal(
+        siswaRombelId: event.siswaRombelId,
+        jadwalId: event.jadwalId,
+      );
+
+      emit(AbsensiLoaded(absensiList));
+    } catch (e) {
+      // Jika sebelumnya ada data, kita pertahankan data tersebut
+      if (state is AbsensiLoaded) {
+        emit(
+          AbsensiError(
+            e.toString(),
+            lastAbsensi: (state as AbsensiLoaded).absensiList,
+          ),
+        );
+      } else {
+        emit(AbsensiError(e.toString()));
+      }
+    }
+  }
+
+  Future<void> _onAbsenMasuk(
+    AbsenMasukEvent event,
+    Emitter<AbsensiState> emit,
+  ) async {
+    emit(AbsensiSubmitting());
+
+    try {
+      await repository.absenMasuk(
+        siswaRombelId: event.siswaRombelId,
+        jadwalId: event.jadwalId,
+        latitude: event.latitude,
+        longitude: event.longitude,
+      );
+
+      emit(AbsensiSuccess());
+
+      // Muat ulang data setelah absen berhasil
+      add(
+        LoadAbsensiEvent(
+          siswaRombelId: event.siswaRombelId,
           jadwalId: event.jadwalId,
-          tanggal: event.tanggal,
-          status: event.status,
-          latitude: event.latitude,
-          longitude: event.longitude,
-          alamatIp: event.alamatIp,
-          deviceId: event.deviceId,
-          statusVerifikasi: event.statusVerifikasi,
-          verifikasiAbsensi: event.verifikasiAbsensi,
+        ),
+      );
+    } catch (e) {
+      // Jika sebelumnya ada data, kita pertahankan data tersebut
+      if (state is AbsensiLoaded) {
+        emit(
+          AbsensiError(
+            e.toString(),
+            lastAbsensi: (state as AbsensiLoaded).absensiList,
+          ),
         );
-        emit(AbsensiSuccess());
-        // Fetch ulang data absensi
-        final absensiList = await absensiRepository.fetchAbsensiSiswa(
-          event.siswaId,
-          event.jadwalId,
-        );
-        _lastAbsensiList = absensiList;
-        emit(AbsensiLoaded(absensiList));
-      } catch (e) {
-        emit(AbsensiError(e.toString(), lastAbsensi: _lastAbsensiList));
+      } else {
+        emit(AbsensiError(e.toString()));
       }
-    });
+    }
   }
 }

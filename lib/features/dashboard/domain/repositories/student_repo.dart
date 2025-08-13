@@ -5,27 +5,26 @@ import 'package:e_learning_mobile/core/storage/secure_storage.dart';
 import 'package:e_learning_mobile/features/dashboard/data/model/dashboard_model.dart';
 
 class StudentRepository {
-  Future<Student> getStudentProfile() async {
+  Future<DashboardResponse> getStudentDashboard() async {
     try {
-      // Pastikan token tersedia
       final token = await SecureStorage.getToken();
       if (token == null) {
         throw Exception('Anda harus login terlebih dahulu');
       }
 
       final response = await ApiClient.dio.get(
-        ApiConstants.siswaEndpoint,
+        ApiConstants.siswaRombelEndpoint,
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
-      if (response.data['data'] == null || response.data['data'].isEmpty) {
-        throw Exception('Data siswa tidak ditemukan');
+      if (response.data['data'] == null) {
+        throw Exception('Data dashboard tidak ditemukan');
       }
-      print(response.data['data']);
-      return Student.fromJson(response.data['data']);
+
+      return DashboardResponse.fromJson(response.data['data']);
     } on DioException catch (e) {
       throw Exception(
         e.response?.data['message']?.toString() ??
-            'Gagal memuat profil siswa. Silakan coba lagi.',
+            'Gagal memuat dashboard. Silakan coba lagi.',
       );
     }
   }

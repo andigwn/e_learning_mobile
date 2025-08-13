@@ -8,16 +8,24 @@ part 'tugas_state.dart';
 
 class TugasBloc extends Bloc<TugasEvent, TugasState> {
   final TugasRepo repository;
+
   TugasBloc(this.repository) : super(TugasInitial()) {
     on<LoadTugas>(_onLoadTugas);
   }
+
   Future<void> _onLoadTugas(LoadTugas event, Emitter<TugasState> emit) async {
     emit(TugasLoading());
     try {
       final tugas = await repository.getTugas(event.jadwalId);
-      emit(TugasLoaded(tugas));
+
+      if (tugas.isEmpty) {
+        emit(TugasEmpty());
+      } else {
+        emit(TugasLoaded(tugas));
+      }
     } catch (e) {
-      emit(TugasError(e.toString()));
+      final errorMessage = e.toString().replaceFirst('Exception: ', '');
+      emit(TugasError(errorMessage));
     }
   }
 }

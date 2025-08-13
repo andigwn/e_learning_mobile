@@ -2,11 +2,6 @@ import 'package:e_learning_mobile/core/routes/app_route.dart';
 import 'package:e_learning_mobile/core/storage/secure_storage.dart';
 import 'package:e_learning_mobile/core/utils/validator.dart';
 import 'package:e_learning_mobile/features/auth/bloc/auth_bloc.dart';
-// import 'package:e_learning_mobile/features/dashboard/presentation/pages/dashboard/home.dart';
-// import 'package:e_learning_mobile/features/dashboard/presentation/pages/guru/dashboard/home.dart';
-// import 'package:e_learning_mobile/features/dashboard/presentation/pages/siswa/dashboard/student_dashboard.dart';
-// import 'package:e_learning_mobile/features/dashboard/presentation/pages/siswa/dashboard/siswa.dart';
-// import 'package:e_learning_mobile/features/dashboard/presentation/pages/siswa/dashboard/student_dashboard.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -31,15 +26,7 @@ class _LoginFormState extends State<LoginForm> {
           await SecureStorage.saveToken(state.token);
 
           if (!mounted) return;
-
-          switch (state.roleId) {
-            case 2:
-              context.go('/teacher-dashboard');
-              break;
-            case 3:
-              context.goNamed(Routes.home);
-              break;
-          }
+          context.goNamed(Routes.home);
         }
         if (state is AuthError) {
           ScaffoldMessenger.of(

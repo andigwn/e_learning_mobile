@@ -9,18 +9,18 @@ class StudentBloc extends Bloc<StudentEvent, StudentState> {
   final StudentRepository repository;
 
   StudentBloc(this.repository) : super(StudentInitial()) {
-    on<LoadStudentProfile>(_onLoadProfile);
+    on<LoadStudentDashboard>(_onLoadDashboard);
     on<LoadAllStudents>(_onLoadAllStudents);
   }
 
-  Future<void> _onLoadProfile(
-    LoadStudentProfile event,
+  Future<void> _onLoadDashboard(
+    LoadStudentDashboard event,
     Emitter<StudentState> emit,
   ) async {
     emit(StudentLoading());
     try {
-      final student = await repository.getStudentProfile();
-      emit(StudentProfileLoaded(student));
+      final dashboard = await repository.getStudentDashboard();
+      emit(StudentDashboardLoaded(dashboard));
     } catch (e) {
       emit(StudentError(e.toString()));
     }

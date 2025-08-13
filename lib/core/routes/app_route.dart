@@ -10,6 +10,8 @@ import 'package:e_learning_mobile/features/dashboard/presentation/pages/siswa/da
 import 'package:e_learning_mobile/features/jadwal/bloc/jadwal_bloc.dart';
 import 'package:e_learning_mobile/features/jadwal/domain/repositories/jadwal_repo.dart';
 import 'package:e_learning_mobile/features/jadwal/persentation/jadwal_page.dart';
+import 'package:e_learning_mobile/features/pengumpulan_tugas/bloc/pengumpulan_tugas_bloc.dart';
+import 'package:e_learning_mobile/features/pengumpulan_tugas/domain/repository/pengumpulan_tugas_repo.dart';
 import 'package:e_learning_mobile/features/pengumpulan_tugas/presentation/pengumpulan_tugas.dart';
 import 'package:e_learning_mobile/features/splashscreen/splashscreen.dart';
 import 'package:e_learning_mobile/features/tugas/bloc/tugas_bloc.dart';
@@ -18,9 +20,6 @@ import 'package:e_learning_mobile/features/tugas/presentation/tugas_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-
-import 'package:e_learning_mobile/features/dashboard/data/model/dashboard_model.dart';
-import 'package:e_learning_mobile/features/jadwal/data/model/jadwal_model.dart';
 
 part 'route_name.dart';
 
@@ -82,29 +81,51 @@ class AppRouter {
                 path: 'absensi',
                 name: Routes.absensi,
                 pageBuilder: (context, state) {
-                  var student =
-                      state.extra is Map && state.extra != null
-                          ? (state.extra as Map)['student']
-                          : null;
-                  var jadwal =
-                      state.extra is Map && state.extra != null
-                          ? (state.extra as Map)['jadwal']
-                          : null;
-                  // Konversi jika bertipe Map (termasuk IdentityMap)
-                  if (student != null && student is Map) {
-                    student = Student.fromJson(
-                      Map<String, dynamic>.from(student),
+                  int siswaRombelId = 0;
+                  int jadwalId = 0;
+
+                  if (state.extra is Map) {
+                    final extra = state.extra as Map<String, dynamic>;
+                    siswaRombelId = extra['siswaRombelId'] as int? ?? 0;
+                    jadwalId = extra['jadwalId'] as int? ?? 0;
+                  }
+
+                  if (siswaRombelId == 0 || jadwalId == 0) {
+                    return MaterialPage(
+                      child: Scaffold(
+                        appBar: AppBar(title: const Text('Error')),
+                        body: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Text(
+                                'Data absensi tidak valid',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  color: Colors.red,
+                                ),
+                              ),
+                              const SizedBox(height: 20),
+                              ElevatedButton(
+                                onPressed: () => context.pop(),
+                                child: const Text('Kembali'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     );
                   }
-                  if (jadwal != null && jadwal is Map) {
-                    jadwal = Jadwal.fromJson(Map<String, dynamic>.from(jadwal));
-                  }
+
                   return MaterialPage(
                     child: BlocProvider(
                       create:
                           (context) =>
                               AbsensiBloc(context.read<AbsensiRepository>()),
-                      child: AbsensiPage(student: student, jadwal: jadwal),
+                      child: AbsensiPage(
+                        siswaRombelId: siswaRombelId,
+                        jadwalId: jadwalId,
+                      ),
                     ),
                   );
                 },
@@ -136,13 +157,41 @@ class AppRouter {
                     path: "pengumpulan-tugas",
                     name: Routes.pengumpulanTugas,
                     pageBuilder: (context, state) {
+                      // Validasi dan ekstrak parameter dengan aman
+                      if (state.extra is! Map<String, dynamic>) {
+                        return _buildErrorPage(
+                          context,
+                          "Format data tidak valid",
+                        );
+                      }
+
                       final args = state.extra as Map<String, dynamic>;
+                      final siswaRombelId = args['siswaRombelId'] as int?;
+                      final tugasId = args['tugasId'] as int?;
+
+                      if (siswaRombelId == null || tugasId == null) {
+                        return _buildErrorPage(
+                          context,
+                          "Data siswa atau tugas tidak valid",
+                        );
+                      }
+
                       return MaterialPage(
-                        child: PengumpulanTugasPage(
-                          siswaId: args['siswaId'],
-                          tugasId: args['tugasId'],
-                        ),
                         key: state.pageKey,
+                        child: MultiBlocProvider(
+                          providers: [
+                            BlocProvider(
+                              create:
+                                  (context) => PengumpulanTugasBloc(
+                                    context.read<PengumpulanTugasRepository>(),
+                                  ),
+                            ),
+                          ],
+                          child: PengumpulanTugasPage(
+                            siswaRombelId: siswaRombelId,
+                            tugasId: tugasId,
+                          ),
+                        ),
                       );
                     },
                   ),
@@ -179,4 +228,26 @@ class AppRouter {
       ).asyncMap((_) => SecureStorage.hasToken()),
     ),
   );
+
+  // Helper untuk halaman error
+  MaterialPage _buildErrorPage(BuildContext context, String message) {
+    return MaterialPage(
+      child: Scaffold(
+        appBar: AppBar(title: const Text('Error')),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(message, style: const TextStyle(color: Colors.red)),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: () => context.pop(),
+                child: const Text('Kembali'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

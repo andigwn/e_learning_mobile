@@ -20,6 +20,8 @@ class AbsensiLoaded extends AbsensiState {
   List<Object?> get props => [absensiList];
 }
 
+class AbsensiSubmitting extends AbsensiState {}
+
 class AbsensiSuccess extends AbsensiState {}
 
 class AbsensiError extends AbsensiState {
@@ -31,5 +33,3 @@ class AbsensiError extends AbsensiState {
   @override
   List<Object?> get props => [message, lastAbsensi];
 }
-
-class AbsensiButtonLoading extends AbsensiState {}
